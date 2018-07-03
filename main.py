@@ -1,30 +1,47 @@
-from flask import Flask
+import json
+import os
+from string import Template
+from typing import List, Dict
 
+from flask import Flask
 from selenium import webdriver
 from selenium.webdriver.common.desired_capabilities import DesiredCapabilities
-
-import os
-
-import json
 
 fooda_base_url = 'https://app.fooda.com'
 fooda_email = os.environ['fooda_email']
 fooda_password = os.environ['fooda_password']
 
+slack_fooda_template = Template("""*${name}*
+${address} ~ _${cuisines}_""")
+
+
 app = Flask(__name__)
 
 driver = webdriver.Remote(command_executor='http://chrome:4444/wd/hub', desired_capabilities=DesiredCapabilities.CHROME)
 driver.implicitly_wait(3)
-driver.get('https://mattrb.com')
 
 
 @app.route('/')
-def hello_world():
-    return 'Flask Dockerized'
+def scrape_fooda(dump_to_string: bool = True):
+    login_fooda()
+    location_urls = get_location_urls()
+    location_info = check_locations(location_urls)
+
+    driver.delete_all_cookies()
+
+    return json.dumps(location_info) if dump_to_string else location_info
 
 
-@app.route('/fooda')
-def get_menus():
+@app.route('/slack')
+def get_slack_formatted_message():
+    return json.dumps({
+        'text': '\n'.join([slack_fooda_template.substitute(popup) for popup in scrape_fooda(False)]),
+        'username': 'markdownbot',
+        'mrkdwn': True
+    })
+
+
+def login_fooda() -> None:
     driver.get(fooda_base_url)
     login = driver.find_element_by_css_selector('a[href="/login"]')
     login.click()
@@ -35,27 +52,18 @@ def get_menus():
     submit = driver.find_element_by_css_selector('input[value="Log In"]')
     submit.click()
 
-    locations_to_check = []
 
+def get_location_urls() -> List[str]:
     dropdown_wrapper = driver.find_elements_by_class_name('secondary-bar__event-dropdown')
-
     if len(dropdown_wrapper) == 0:
-        locations_to_check.append(driver.current_url)
+        return [driver.current_url]
     elif len(dropdown_wrapper) == 1:
-        links = dropdown_wrapper[0].find_elements_by_class_name('js-selection-target')
-        for link in links:
-            locations_to_check.append(link.get_attribute('href'))
+        return [link.get_attribute('href') for link in dropdown_wrapper[0].find_elements_by_class_name('js-selection-target')]
     else:
-        return 'ERROR: TOO MANY DROPDOWN WRAPPERS WITH CLASS "secondary-bar__event-dropdown'
-
-    location_info = check_locations(locations_to_check)
-
-    driver.delete_all_cookies()
-
-    return json.dumps(location_info)
+        return []
 
 
-def check_locations(locations):
+def check_locations(locations: List[str]) -> List[Dict]:
     location_info = []
 
     for location in locations:
@@ -64,7 +72,7 @@ def check_locations(locations):
         image_url = restaurant.find_element_by_class_name('myfooda-event__photo').get_attribute('src')
         name = restaurant.find_element_by_class_name('myfooda-event__name').get_attribute('innerHTML')
         address = restaurant.find_element_by_class_name('myfooda-vendor-location-name').get_attribute('innerHTML')
-        cuisines = [c.get_attribute('innerHTML') for c in restaurant.find_elements_by_class_name('myfooda-event__cuisine')]
+        cuisines = ', '.join([c.get_attribute('innerHTML') for c in restaurant.find_elements_by_class_name('myfooda-event__cuisine')])
         location_info.append({
             'image_url': image_url,
             'name': name,
