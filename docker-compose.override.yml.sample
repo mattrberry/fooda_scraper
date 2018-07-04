@@ -1,0 +1,9 @@
+version: '3'
+
+services:
+  # For debugging: uses the debug image and binds ports
+  chrome:
+    image: selenium/standalone-chrome-debug
+    ports:
+      - "4444:4444"
+      - "5900:5900"
