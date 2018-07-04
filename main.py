@@ -38,20 +38,12 @@ def scrape_fooda(dump_to_string: bool = True):
 def get_slack_formatted_message():
     response_url = request.form['response_url']
 
-    requests.post('requests.mattrb.com/foodaslackdebug', {'response_url':response_url})
-
     thread = Thread(target=handle_slack_callback, args=(response_url,))
     thread.start()
 
-    return {
+    return json.dumps({
         'text': 'generating response.........'
-    }
-
-    # return json.dumps({
-    #     'text': '\n'.join([slack_fooda_template.substitute(popup) for popup in scrape_fooda(False)]),
-    #     'username': 'markdownbot',
-    #     'mrkdwn': True
-    # })
+    })
 
 
 def handle_slack_callback(response_url):
