@@ -14,7 +14,9 @@ services:
     ports:
       - "5000:5000"
   chrome:
-    image: selenium/standalone-chrome-debug
-    ports:
-      - "4444:4444"
-      - "5900:5900"
+    image: selenium/standalone-chrome
+    healthcheck:
+      test: wget -qO - http://chrome:4444/wd/hub || exit 1
+      interval: 3s
+      timeout: 3s
+      retries: 2
