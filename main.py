@@ -1,9 +1,11 @@
 import json
 import os
 from string import Template
+from threading import Thread
 from typing import List, Dict
 
-from flask import Flask
+import requests
+from flask import Flask, request
 from selenium import webdriver
 from selenium.webdriver.common.desired_capabilities import DesiredCapabilities
 
@@ -32,9 +34,28 @@ def scrape_fooda(dump_to_string: bool = True):
     return json.dumps(location_info) if dump_to_string else location_info
 
 
-@app.route('/slack')
+@app.route('/slack', methods=['POST'])
 def get_slack_formatted_message():
-    return json.dumps({
+    response_url = request.form['response_url']
+
+    requests.post('requests.mattrb.com/foodaslackdebug', {'response_url':response_url})
+
+    thread = Thread(target=handle_slack_callback, args=(response_url,))
+    thread.start()
+
+    return {
+        'text': 'generating response.........'
+    }
+
+    # return json.dumps({
+    #     'text': '\n'.join([slack_fooda_template.substitute(popup) for popup in scrape_fooda(False)]),
+    #     'username': 'markdownbot',
+    #     'mrkdwn': True
+    # })
+
+
+def handle_slack_callback(response_url):
+    requests.post(response_url, {
         'text': '\n'.join([slack_fooda_template.substitute(popup) for popup in scrape_fooda(False)]),
         'username': 'markdownbot',
         'mrkdwn': True
