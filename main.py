@@ -57,6 +57,7 @@ def get_slack_formatted_message():
 def handle_slack_callback(response_url):
     fooda_response = scrape_fooda(False)
     requests.post(response_url, json={
+        'response_type': 'in_channel',
         'text': f'Next fooda popup on: *{fooda_response["day"]}*\n' + '\n'.join([slack_fooda_template.substitute(popup) for popup in fooda_response['locations']]),
         'username': 'markdownbot',
         'mrkdwn': True
