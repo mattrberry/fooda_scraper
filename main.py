@@ -7,6 +7,7 @@ from typing import List, Dict
 import requests
 from flask import Flask, request
 from selenium import webdriver
+from selenium.common.exceptions import WebDriverException
 from selenium.webdriver.common.desired_capabilities import DesiredCapabilities
 
 fooda_base_url = 'https://app.fooda.com'
@@ -16,20 +17,23 @@ fooda_password = os.environ['fooda_password']
 slack_fooda_template = Template("""*${name}*
 ${address} ~ _${cuisines}_""")
 
-
 app = Flask(__name__)
-
-driver = webdriver.Remote(command_executor='http://chrome:4444/wd/hub', desired_capabilities=DesiredCapabilities.CHROME)
-driver.implicitly_wait(3)
 
 
 @app.route('/')
 def scrape_fooda(dump_to_string: bool = True):
-    login_fooda()
-    location_urls = get_location_urls()
-    location_info = check_locations(location_urls)
+    driver = webdriver.Remote(command_executor='http://chrome:4444/wd/hub',
+                              desired_capabilities=DesiredCapabilities.CHROME)
+    driver.implicitly_wait(3)
 
-    driver.delete_all_cookies()
+    try:
+        login_fooda(driver)
+        location_urls = get_location_urls(driver)
+        location_info = check_locations(driver, location_urls)
+    except WebDriverException:
+        return 'Failed to get data from fooda.'
+    finally:
+        driver.quit()
 
     return json.dumps(location_info) if dump_to_string else location_info
 
@@ -53,8 +57,7 @@ def handle_slack_callback(response_url):
         'mrkdwn': True
     })
 
-
-def login_fooda() -> None:
+def login_fooda(driver) -> None:
     driver.get(fooda_base_url)
     login = driver.find_element_by_css_selector('a[href="/login"]')
     login.click()
@@ -66,7 +69,7 @@ def login_fooda() -> None:
     submit.click()
 
 
-def get_location_urls() -> List[str]:
+def get_location_urls(driver) -> List[str]:
     dropdown_wrapper = driver.find_elements_by_class_name('secondary-bar__event-dropdown')
     if len(dropdown_wrapper) == 0:
         return [driver.current_url]
@@ -76,7 +79,7 @@ def get_location_urls() -> List[str]:
         return []
 
 
-def check_locations(locations: List[str]) -> List[Dict]:
+def check_locations(driver, locations: List[str]) -> List[Dict]:
     location_info = []
 
     for location in locations:
