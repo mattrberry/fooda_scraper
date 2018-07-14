@@ -28,6 +28,7 @@ def scrape_fooda(dump_to_string: bool = True):
 
     try:
         login_fooda(driver)
+        day_of_week = get_day(driver)
         location_urls = get_location_urls(driver)
         location_info = check_locations(driver, location_urls)
     except WebDriverException:
@@ -35,7 +36,12 @@ def scrape_fooda(dump_to_string: bool = True):
     finally:
         driver.quit()
 
-    return json.dumps(location_info) if dump_to_string else location_info
+    response = {
+        'day': day_of_week,
+        'locations': location_info
+    }
+
+    return json.dumps(response) if dump_to_string else response
 
 
 @app.route('/slack', methods=['POST'])
@@ -45,17 +51,17 @@ def get_slack_formatted_message():
     thread = Thread(target=handle_slack_callback, args=(response_url,))
     thread.start()
 
-    return json.dumps({
-        'text': 'generating response.........'
-    })
+    return ''
 
 
 def handle_slack_callback(response_url):
+    fooda_response = scrape_fooda(False)
     requests.post(response_url, json={
-        'text': '\n'.join([slack_fooda_template.substitute(popup) for popup in scrape_fooda(False)]),
+        'text': f'Next fooda popup on: *{fooda_response["day"]}*' + '\n'.join([slack_fooda_template.substitute(popup) for popup in fooda_response]),
         'username': 'markdownbot',
         'mrkdwn': True
     })
+
 
 def login_fooda(driver) -> None:
     driver.get(fooda_base_url)
@@ -67,6 +73,11 @@ def login_fooda(driver) -> None:
     password_box.send_keys(fooda_password)
     submit = driver.find_element_by_css_selector('input[value="Log In"]')
     submit.click()
+
+
+def get_day(driver):
+    active_tab_selection = driver.find_element_by_class_name('cal__day--active')
+    return active_tab_selection.find_element_by_class_name('cal__day__inner__info__label').get_attribute('innerHTML')
 
 
 def get_location_urls(driver) -> List[str]:
