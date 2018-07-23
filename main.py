@@ -14,7 +14,7 @@ fooda_base_url = 'https://app.fooda.com'
 fooda_email = os.environ['fooda_email']
 fooda_password = os.environ['fooda_password']
 
-slack_fooda_template = Template("""*${<name|menu>}*
+slack_fooda_template = Template("""*<${menu}|${name}>*
 ${address} ~ _${cuisines}_""")
 
 app = Flask(__name__)
@@ -58,7 +58,7 @@ def handle_slack_callback(response_url):
     fooda_response = scrape_fooda(False)
     requests.post(response_url, json={
         'response_type': 'in_channel',
-        'text': f'Next fooda popup on: *{fooda_response["day"]}*\n' + '\n'.join([slack_fooda_template.substitute(popup) for popup in fooda_response['locations']]),
+        'text': f'Next fooda popups are *{fooda_response["day"]}*\n>>>' + '\n'.join([slack_fooda_template.substitute(popup) for popup in fooda_response['locations']]),
         'username': 'markdownbot',
         'mrkdwn': True
     })
