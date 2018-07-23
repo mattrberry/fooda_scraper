@@ -10,6 +10,8 @@ from selenium import webdriver
 from selenium.common.exceptions import WebDriverException
 from selenium.webdriver.common.desired_capabilities import DesiredCapabilities
 
+from location_nicknames import translations
+
 fooda_base_url = 'https://app.fooda.com'
 fooda_email = os.environ['fooda_email']
 fooda_password = os.environ['fooda_password']
@@ -101,6 +103,7 @@ def check_locations(driver, locations: List[str]) -> List[Dict]:
         image_url = restaurant.find_element_by_class_name('myfooda-event__photo').get_attribute('src')
         name = restaurant.find_element_by_class_name('myfooda-event__name').get_attribute('innerHTML')
         address = restaurant.find_element_by_class_name('myfooda-vendor-location-name').get_attribute('innerHTML')
+        address = translations[address] if address in translations else address
         cuisines = ', '.join([c.get_attribute('innerHTML') for c in restaurant.find_elements_by_class_name('myfooda-event__cuisine')])
         location_info.append({
             'image_url': image_url,
