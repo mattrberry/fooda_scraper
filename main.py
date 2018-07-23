@@ -14,7 +14,7 @@ fooda_base_url = 'https://app.fooda.com'
 fooda_email = os.environ['fooda_email']
 fooda_password = os.environ['fooda_password']
 
-slack_fooda_template = Template("""*${name}*
+slack_fooda_template = Template("""*${<name|menu>}*
 ${address} ~ _${cuisines}_""")
 
 app = Flask(__name__)
@@ -97,6 +97,7 @@ def check_locations(driver, locations: List[str]) -> List[Dict]:
     for location in locations:
         driver.get(location)
         restaurant = driver.find_element_by_class_name('myfooda-event__restaurant')
+        menu = restaurant.get_attribute('href')
         image_url = restaurant.find_element_by_class_name('myfooda-event__photo').get_attribute('src')
         name = restaurant.find_element_by_class_name('myfooda-event__name').get_attribute('innerHTML')
         address = restaurant.find_element_by_class_name('myfooda-vendor-location-name').get_attribute('innerHTML')
@@ -104,6 +105,7 @@ def check_locations(driver, locations: List[str]) -> List[Dict]:
         location_info.append({
             'image_url': image_url,
             'name': name,
+            'menu': menu,
             'address': address,
             'cuisines': cuisines
         })
