@@ -54,7 +54,7 @@ def slack_invocation():
     thread = Thread(target=handle_slack_callback, args=(response_url,))
     thread.start()
 
-    return 'OK'
+    return 'Loading the latest fooda info...'
 
 
 @app.route('/slack_webhook', methods=['GET'])
