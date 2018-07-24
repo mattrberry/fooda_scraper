@@ -10,9 +10,10 @@ services:
     environment:
       - fooda_email=${fooda_email}
       - fooda_password=${fooda_password}
+      - slack_webhook_url=${slack_webhook_url}
       - selenium_host=chrome
     ports:
-      - "5021:5000"
+      - "5000:5000"
   chrome:
     image: selenium/standalone-chrome
     healthcheck:

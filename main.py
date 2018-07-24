@@ -13,8 +13,9 @@ from selenium.webdriver.common.desired_capabilities import DesiredCapabilities
 from location_nicknames import translations
 
 fooda_base_url = 'https://app.fooda.com'
-fooda_email = os.environ['fooda_email']
-fooda_password = os.environ['fooda_password']
+fooda_email = os.environ.get('fooda_email', '')
+fooda_password = os.environ.get('fooda_password', '')
+slack_webhook_url = os.environ.get('slack_webhook_url', '')
 
 slack_fooda_template = Template("""*<${menu}|${name}>* ~ _${cuisines}_
 ${address}""")
@@ -47,23 +48,36 @@ def scrape_fooda(dump_to_string: bool = True):
 
 
 @app.route('/slack', methods=['POST'])
-def get_slack_formatted_message():
+def slack_invocation():
     response_url = request.form['response_url']
 
     thread = Thread(target=handle_slack_callback, args=(response_url,))
     thread.start()
 
-    return ''
+    return 'OK'
+
+
+@app.route('/slack_webhook', methods=['GET'])
+def slack_webhook_kickoff():
+    try:
+        handle_slack_callback(slack_webhook_url)
+        return 'OK'
+    except:
+        return 'FAILURE', 500
 
 
 def handle_slack_callback(response_url):
     fooda_response = scrape_fooda(False)
-    requests.post(response_url, json={
+    requests.post(response_url, json=get_slack_formatted_message(fooda_response))
+
+
+def get_slack_formatted_message(fooda_response):
+    return {
         'response_type': 'in_channel',
         'text': f'Next fooda popups are *{fooda_response["day"]}*\n>>>' + '\n'.join([slack_fooda_template.substitute(popup) for popup in fooda_response['locations']]),
         'username': 'markdownbot',
         'mrkdwn': True
-    })
+    }
 
 
 def login_fooda(driver) -> None:
