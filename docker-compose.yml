@@ -12,7 +12,7 @@ services:
       - fooda_password=${fooda_password}
       - selenium_host=chrome
     ports:
-      - "5000:5000"
+      - "5021:5000"
   chrome:
     image: selenium/standalone-chrome
     healthcheck:

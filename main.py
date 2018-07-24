@@ -16,8 +16,8 @@ fooda_base_url = 'https://app.fooda.com'
 fooda_email = os.environ['fooda_email']
 fooda_password = os.environ['fooda_password']
 
-slack_fooda_template = Template("""*<${menu}|${name}>*
-${address} ~ _${cuisines}_""")
+slack_fooda_template = Template("""*<${menu}|${name}>* ~ _${cuisines}_
+${address}""")
 
 app = Flask(__name__)
 
